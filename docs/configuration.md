@@ -25,24 +25,28 @@ tools are not mapped.
 ## A block of your own in the Herdr app
 
 An entry with a `child` puts an icon of your own in the sidebar's app strip, among cockpit's apps and in the
-config's order. A click shows `child`, the id of a block you add to the `center` stack of
-`~/.config/herdr-app/layouts/cockpit.json`, the way cockpit's own apps are shown; the icon stays highlighted while it
-is. `label` is the tooltip (the `name` when omitted), `icon` one of the mod's icons in `app/mods/cockpit/icons/`
-without `.svg` (`app-window` when omitted), and `key` the shortcut the tooltip names.
+config's order. A click shows `child`, a block of the `center` stack of `~/.config/herdr-app/layouts/cockpit.json`,
+the way cockpit's own apps are shown; the icon stays highlighted while it is. `label` is the tooltip (the `name` when
+omitted), `icon` one of the mod's icons in `app/mods/cockpit/icons/` without `.svg` (`app-window` when omitted), and
+`key` the shortcut the tooltip names.
 
 ```json
-"spaces": ["inbox", "terminal", { "name": "notes", "child": "notes", "label": "Notes", "icon": "file-text", "key": "⌘⌥8" }]
+"spaces": ["inbox", "terminal", { "name": "notes", "child": "notes", "label": "Notes", "icon": "file-text", "key": "⌘⌥8",
+  "mod": "notes", "badge": { "run": ["node", "mods/notes/count.mjs"], "every": 300 } }]
 ```
 
-```json
-{ "id": "notes", "type": "block", "content": { "mod": "notes" }, "background": "background",
-  "border": { "width": 1, "color": "border" }, "radius": 10, "shadow": "sm" }
-```
+`mod` (and `props`, handed to it) fills the block: the sidebar adds
+`{ "id": "notes", "type": "block", "content": { "mod": "notes" } }`, framed like cockpit's own apps, to the `center`
+stack whenever the layout lacks it, so the block comes back by itself after `cockpit app install` writes the layout
+again. Without `mod`, add the block to the stack yourself, and again after each install.
 
-The icon's badge is the mod's to set: `setShared("badge.notes", { count: 3, tone: "warning" })`, keyed by `child`,
-and `null` clears it. `key` only labels the tooltip; bind it in the `layout:cockpit` section of
-`~/.config/herdr-app/keys.json`, as `"cmd-alt-8": "cockpit.go:notes"`. `cockpit app install` writes the cockpit layout
-again, so add the block once more after an update.
+The icon's badge is the mod's to set: `setShared("badge.notes", { count: 3, tone: "warning", at: Date.now() })`,
+keyed by `child`; a count of 0 or `null` shows none. Herdr starts a block's mod the first time the block shows, so
+until then nothing sets it. `badge` fills that gap: while the window is in front and the badge is older than `every`
+seconds (at least 60, 300 by default), the sidebar runs `run` in the Herdr app's home and takes its last line,
+`{"count": 3, "tone": "warning"}`, as the badge. A mod that writes `at` at least that often keeps the command from
+running at all. `key` only labels the tooltip; bind it in the `layout:cockpit` section of
+`~/.config/herdr-app/keys.json`, as `"cmd-alt-8": "cockpit.go:notes"`.
 
 ## The sources
 

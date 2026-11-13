@@ -178,8 +178,19 @@ export type Config = {
 }
 
 // A pinned space of your own: where it opens, its sidebar glyph, and the herdr key /cockpit:setup binds to it. With a
-// `child`, a block of your own in the Herdr app's center stack instead, its icon and label in the sidebar's app strip.
-export type PinnedSpace = { name: string; cwd?: string; icon?: string; key?: string; child?: string; label?: string }
+// `child`, a block of your own in the Herdr app's center stack instead, its icon and label in the sidebar's app strip;
+// `mod` and `props` fill that block, and `badge` counts its badge while the block has not started.
+export type PinnedSpace = {
+  name: string
+  cwd?: string
+  icon?: string
+  key?: string
+  child?: string
+  label?: string
+  mod?: string
+  props?: Record<string, unknown>
+  badge?: { run: string[]; every?: number }
+}
 
 // The Linear connector's mapping, the default for a config that names no other.
 const LINEAR: Tickets = {
