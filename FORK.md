@@ -5,7 +5,8 @@ unchanged plus a few commits on `main`:
 
 | Commit | Kind | What it does |
 | --- | --- | --- |
-| Herdr app: pin a block of your own in the sidebar's app strip | feature, meant for upstream | `spaces` entries `{name, child, label, icon, key}` show as icons in the Herdr app's sidebar and open that block of the `center` stack. Kept on the branch `sidebar-custom-apps` (upstream's `main` plus this commit only), the head of a pull request to upstream once it is agreed. |
+| Herdr app: pin a block of your own in the sidebar's app strip | feature, meant for upstream | `spaces` entries `{name, child, label, icon, key}` show as icons in the Herdr app's sidebar and open that block of the `center` stack. Kept on the branch `sidebar-custom-apps` (upstream's `main` plus the feature commits only), the head of a pull request to upstream once it is agreed. |
+| Herdr app: a block of your own fills itself back in and counts its badge unshown | feature, meant for upstream | A `spaces` entry's `mod` makes the sidebar add its block back to the `center` stack after `cockpit app install`; its `badge` command counts the badge while the block has not started. On `sidebar-custom-apps` too, after the commit above. |
 | Fork: updates from nx-solutions-ug/cockpit | fork only, never for upstream | `FORK.md`, and the places that name the repo updates come from: `install.sh`, `herdr/fetch-apps.sh`, `herdr/tui/update/src/lib.rs`, `herdr/tui/hub/src/feed/upgrade.rs`, `plugin/hooks/upkeep.ts`, `app/mods/cockpit/update.js`. |
 
 Keep the fork-only commit last, so a rebase onto upstream replays the feature commits first and any conflict on the
@@ -79,7 +80,7 @@ next number.
 
 ## After every `cockpit app install`
 
-`cockpit app install` writes `layouts/cockpit.json` again from the release, so blocks added there by hand (such as a
-block of your own for a `spaces` entry with a `child`) have to be added again afterwards: add each one back to the
-`center` stack, as in `docs/configuration.md` ("A block of your own in the Herdr app"), rather than restoring an old
-copy of the file, which would undo the release's own layout changes.
+`cockpit app install` writes `layouts/cockpit.json` again from the release. A block of your own whose `spaces` entry
+names its `mod` comes back by itself (the sidebar adds it to the `center` stack, `docs/configuration.md`, "A block of
+your own in the Herdr app"); one without a `mod` has to be added again by hand. Don't restore an old copy of the file:
+it would undo the release's own layout changes.
