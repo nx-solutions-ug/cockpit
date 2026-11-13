@@ -5,7 +5,7 @@
 
 import { div } from "gpui-kit";
 import { h_flex, v_flex } from "gpui-base";
-import { run, shared, setShared, focused, spaces, machines, hc, panes, terminals, setAgentOrder, notify, openOverlay, window as win, readTextFile, exec } from "herdr";
+import { run, shared, setShared, focused, spaces, machines, hc, panes, terminals, setAgentOrder, notify, openOverlay, window as win, readTextFile, writeTextFile, exec, layout, appHome } from "herdr";
 import * as hub from "./hub.js";
 import { togglePalette } from "./palette.js";
 import { openCode } from "./code.js";
@@ -13,7 +13,7 @@ import { deliver, follow } from "./notify.js";
 import { rowsOf } from "./fleet.js";
 import { openUpdate, pending as pendingUpdate } from "./update.js";
 import { tokens, alpha, TEXT, RADIUS, Icon, Kbd, Button, SectionHeader, StageHeading, HoverCard, Hover, Flashes, CornerCount, dur } from "./ui.js";
-import { DEFAULT_SPACES, spaceNames, customApps, pinnedApps } from "./apps.js";
+import { DEFAULT_SPACES, spaceNames, customApps, pinnedApps, withOwnBlocks, badgeDue, parseBadge } from "./apps.js";
 import { AgentsModel, QuestionCard, QuotaBars, StageMark, Chips, STAGES, stageColor, stageAge, hours } from "./agentsui.js";
 
 
@@ -63,6 +63,12 @@ export default class Sidebar {
     this.machineList = [];
     this.refreshMachines(cx);
     cx.timer.every(15000, cx => this.refreshMachines(cx));
+    this.blocksTried = { key: "", at: 0 };
+    this.badgeTried = {};
+    cx.timer.every(30000, (cx) => {
+      this.ensureOwnBlocks(cx);
+      this.refreshOwnBadges(cx);
+    });
     this.drag = null;
     this.update = null;
     this.agents = new AgentsModel();
@@ -79,6 +85,8 @@ export default class Sidebar {
           this.custom = customApps(pinned);
         }
       } catch {}
+      this.ensureOwnBlocks(cx);
+      this.refreshOwnBadges(cx);
       cx.notify();
     });
     // The hub writes update.json every six hours; a window left open picks a newer cockpit up on its own.
@@ -382,6 +390,45 @@ export default class Sidebar {
   appDropAfter(name) {
     const d = this.appDrag;
     return Boolean(d) && this.spaces.indexOf(d.from) < this.spaces.indexOf(name);
+  }
+
+  /** Adds the blocks of your own that name a mod back to the cockpit layout's center stack when it lacks them, as after
+   *  `cockpit app install` writes the layout file again; the same missing set is tried at most once a minute. The file
+   *  is edited, not the shown tree, so the window's clicks stay clicks. */
+  ensureOwnBlocks(cx) {
+    if (shared("layout") !== "cockpit" || !withOwnBlocks(layout(), this.custom)) return;
+    const key = Object.values(this.custom).map((a) => a.child).join(",");
+    if (this.blocksTried.key === key && Date.now() - this.blocksTried.at < 60_000) return;
+    this.blocksTried = { key, at: Date.now() };
+    cx.spawn(async () => {
+      try {
+        const path = `${appHome()}/layouts/cockpit.json`;
+        const text = await readTextFile(path);
+        const next = text ? withOwnBlocks(JSON.parse(text), this.custom) : null;
+        if (next) await writeTextFile(path, JSON.stringify(next, null, 2) + "\n", text);
+      } catch {}
+    });
+  }
+
+  /** Counts the badge of each block of your own with a `badge` command, while the window is in front and the badge is
+   *  older than the command's `every`: a block's mod keeps its badge fresh only once its block has been shown. */
+  refreshOwnBadges(cx) {
+    if (!win().active) return;
+    for (const app of Object.values(this.custom)) {
+      const cmd = app.badge;
+      const key = `badge.${app.child}`;
+      if (!cmd || !badgeDue(shared(key), cmd.every) || !badgeDue(this.badgeTried[app.child], cmd.every)) continue;
+      this.badgeTried[app.child] = { at: Date.now() };
+      cx.spawn(async (cx) => {
+        try {
+          const r = await exec(cmd.run[0], cmd.run.slice(1), { cwd: appHome(), timeout: 120_000 });
+          const badge = r.code === 0 ? parseBadge(r.stdout) : null;
+          // The block's mod may have set a fresher one while the command ran.
+          if (badge && badgeDue(shared(key), cmd.every)) setShared(key, { ...badge, at: Date.now() });
+        } catch {}
+        cx.notify();
+      });
+    }
   }
 
   /** Moves a pinned app to where another one is, then saves the order and re-pins herdr's spaces to match. */

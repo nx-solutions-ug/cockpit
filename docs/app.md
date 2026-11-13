@@ -109,7 +109,9 @@ Desktop checks: `node --experimental-vm-modules --test app/tests/*.test.mjs`.
   reaches every shown copy's `command()`; prefix your own with your view's name (`todo:delete:<key>`).
 - `show(child)` from `sidebar.js` switches the `center` stack and gives that view the keyboard (`show:<app>`).
   The app strip comes from the config's `spaces` (`apps.js`): cockpit's apps by name, and `{name, child, label, icon,
-  key}` for a block of the person's own in the `center` stack, its badge read from `shared("badge.<child>")`.
+  key, mod, props, badge}` for a block of the person's own in the `center` stack, its badge read from
+  `shared("badge.<child>")`. The sidebar writes a missing block with a `mod` back into `layouts/cockpit.json`
+  (`withOwnBlocks`), and runs a `badge` command while that badge is older than its `every`.
 - Notifications (`notify.js`): everything goes through `cockpit_core::notify::post` (or `cockpit notify`). With the app
   frontend the hub hands `{title, body, action, row, buttons}` to the sidebar (`subscribe {notify: true}`), which posts
   Herdr's own toast while the window is in front, else the system notification. `row` is where the one click leads:
