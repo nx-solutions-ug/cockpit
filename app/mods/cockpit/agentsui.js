@@ -158,7 +158,7 @@ export function ContextMeter(id, used, { width = 28 } = {}) {
     .items_center()
     .tooltip(`Context: ${c.left}% left (${100 - c.left}% used of the model's window)`)
     .child(div().relative().w(width).h(4).rounded(2).bg(k.muted).child(div().absolute().left(0).top(0).h_full().rounded(2).bg(tone).w(`${c.left}%`)))
-    .child(div().text_size(TEXT.xs).font_family("JetBrains Mono").text_color(c.level === "ok" ? k.dim : tone).child(`${c.left}%`));
+    .child(div().text_size(TEXT.xs).font_family("JetBrains Mono").text_color(c.level === "ok" ? k.dim : tone).child(`${c.left}% left`));
 }
 
 const quotaTone = (k, q, p) => (p >= 95 ? k.destructive : p >= 80 || q.ahead ? k.warning : k.success);
