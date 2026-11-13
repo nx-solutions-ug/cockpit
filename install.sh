@@ -1,7 +1,7 @@
 #!/bin/sh
 # Installs cockpit without Claude Code, for any agent herdr or the Herdr app runs:
 #
-#   curl -fsSL https://raw.githubusercontent.com/quaresc/cockpit/main/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/nx-solutions-ug/cockpit/main/install.sh | sh
 #
 # It puts the release's scripts and `cockpit` binary for this machine in ~/.local/share/cockpit (COCKPIT_HOME), links
 # ~/.local/bin/cockpit and ~/.config/cockpit/herdr to them, then runs `cockpit setup`. Run it again to update.
@@ -9,7 +9,7 @@
 # the prerequisite checks.
 set -eu
 
-repo=${COCKPIT_REPO:-quaresc/cockpit}
+repo=${COCKPIT_REPO:-nx-solutions-ug/cockpit}
 releases=${COCKPIT_RELEASES_URL:-https://github.com/$repo/releases/download}
 sources=${COCKPIT_SOURCES_URL:-https://github.com/$repo/archive/refs/tags}
 dest=${COCKPIT_HOME:-$HOME/.local/share/cockpit}

@@ -7,7 +7,7 @@ import { withLease } from './store'
 
 type $ = EngineInterface
 
-const REPO = 'quaresc/cockpit'
+const REPO = 'nx-solutions-ug/cockpit'
 const UPDATE_EVERY_MS = 6 * 3600_000
 
 // Read once and kept: after an update the manifest on disk is the new version, while this session still runs the

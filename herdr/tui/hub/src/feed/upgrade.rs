@@ -8,8 +8,8 @@ use super::{http, news};
 use crate::config::Config;
 
 const EVERY_MS: u64 = 6 * 3600 * 1000;
-const PUBLISHED: &str = "https://raw.githubusercontent.com/quaresc/cockpit/main/plugin/.claude-plugin/plugin.json";
-const CHANGELOG: &str = "https://raw.githubusercontent.com/quaresc/cockpit/main/CHANGELOG.md";
+const PUBLISHED: &str = "https://raw.githubusercontent.com/nx-solutions-ug/cockpit/main/plugin/.claude-plugin/plugin.json";
+const CHANGELOG: &str = "https://raw.githubusercontent.com/nx-solutions-ug/cockpit/main/CHANGELOG.md";
 
 /// Whether `a` is a later version than `b`, number by number.
 pub fn is_newer(a: &str, b: &str) -> bool {

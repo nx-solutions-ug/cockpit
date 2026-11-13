@@ -13,7 +13,7 @@ pub use watch::{keep_current, restart_apps};
 
 /// Where the releases' files are, `<base>/v<version>/<file>`; COCKPIT_RELEASES_URL points elsewhere for tests.
 pub fn releases() -> String {
-    std::env::var("COCKPIT_RELEASES_URL").unwrap_or_else(|_| "https://github.com/quaresc/cockpit/releases/download".into())
+    std::env::var("COCKPIT_RELEASES_URL").unwrap_or_else(|_| "https://github.com/nx-solutions-ug/cockpit/releases/download".into())
 }
 
 /// What an update did.

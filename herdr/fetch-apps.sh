@@ -52,7 +52,7 @@ tmp=$(mktemp -d bin.XXXXXX) || { rmdir fetch.lock; exit 1; }
 trap 'rm -rf "$tmp"; rmdir fetch.lock' EXIT
 trap 'exit 1' INT TERM HUP
 
-base=${COCKPIT_RELEASES_URL:-https://github.com/quaresc/cockpit/releases/download}
+base=${COCKPIT_RELEASES_URL:-https://github.com/nx-solutions-ug/cockpit/releases/download}
 file=cockpit-apps-$version-$target.tar.gz
 fail() {
   echo "cockpit: cockpit $version could not be installed ($1); the spaces stay empty until then → sh $(pwd)/fetch-apps.sh" >&2

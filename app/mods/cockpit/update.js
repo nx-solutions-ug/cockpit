@@ -9,7 +9,7 @@ import { closeOverlay, openOverlay, props, readTextFile } from "herdr";
 import * as hub from "./hub.js";
 import { tokens, alpha, TEXT, RADIUS, Icon, Button, Spinner, Mono } from "./ui.js";
 
-const RELEASES = "https://github.com/quaresc/cockpit/releases/tag/v";
+const RELEASES = "https://github.com/nx-solutions-ug/cockpit/releases/tag/v";
 
 /** Whether `a` is a later version than `b`, number by number, as the hub compares them. */
 export function isNewer(a, b) {
