@@ -16,11 +16,33 @@ tools are not mapped.
 | --- | --- | --- |
 | `reposDir` | `~` | The folder holding your git checkouts. |
 | `worktrees` | `false` | The inbox starts work on a branch checked out nowhere in a new herdr worktree. |
-| `spaces` | inbox, terminal, actions, to-do, runbook, meetings | The pinned herdr spaces, in order. A string, or `{name, cwd, icon, key}` for one of your own. |
+| `spaces` | inbox, terminal, actions, to-do, runbook, meetings | The pinned herdr spaces, in order. A string, or `{name, cwd, icon, key}` for one of your own. In the Herdr app, `{name, child, label, icon, key}` pins a block of your own: see [below](#a-block-of-your-own-in-the-herdr-app). |
 | `editor` | `code` | The command the palette's "open in your editor" runs. |
 | `density` | `comfortable` | `compact` puts a row's buttons on the row itself and fits more rows. |
 | `herdrPluginRoot` | `""` | The herdr plugin folder; empty lets the mod find it in herdr's registry. |
 | `frontend` | unset | Forces `tui` or `app` when cockpit cannot tell which it runs in. |
+
+## A block of your own in the Herdr app
+
+An entry with a `child` puts an icon of your own in the sidebar's app strip, among cockpit's apps and in the
+config's order. A click shows `child`, the id of a block you add to the `center` stack of
+`~/.config/herdr-app/layouts/cockpit.json`, the way cockpit's own apps are shown; the icon stays highlighted while it
+is. `label` is the tooltip (the `name` when omitted), `icon` one of the mod's icons in `app/mods/cockpit/icons/`
+without `.svg` (`app-window` when omitted), and `key` the shortcut the tooltip names.
+
+```json
+"spaces": ["inbox", "terminal", { "name": "notes", "child": "notes", "label": "Notes", "icon": "file-text", "key": "⌘⌥8" }]
+```
+
+```json
+{ "id": "notes", "type": "block", "content": { "mod": "notes" }, "background": "background",
+  "border": { "width": 1, "color": "border" }, "radius": 10, "shadow": "sm" }
+```
+
+The icon's badge is the mod's to set: `setShared("badge.notes", { count: 3, tone: "warning" })`, keyed by `child`,
+and `null` clears it. `key` only labels the tooltip; bind it in the `layout:cockpit` section of
+`~/.config/herdr-app/keys.json`, as `"cmd-alt-8": "cockpit.go:notes"`. `cockpit app install` writes the cockpit layout
+again, so add the block once more after an update.
 
 ## The sources
 

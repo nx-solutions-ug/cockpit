@@ -177,8 +177,9 @@ export type Config = {
   density: 'comfortable' | 'compact'
 }
 
-// A pinned space of your own: where it opens, its sidebar glyph, and the herdr key /cockpit:setup binds to it.
-export type PinnedSpace = { name: string; cwd?: string; icon?: string; key?: string }
+// A pinned space of your own: where it opens, its sidebar glyph, and the herdr key /cockpit:setup binds to it. With a
+// `child`, a block of your own in the Herdr app's center stack instead, its icon and label in the sidebar's app strip.
+export type PinnedSpace = { name: string; cwd?: string; icon?: string; key?: string; child?: string; label?: string }
 
 // The Linear connector's mapping, the default for a config that names no other.
 const LINEAR: Tickets = {

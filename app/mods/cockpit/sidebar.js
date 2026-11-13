@@ -13,18 +13,9 @@ import { deliver, follow } from "./notify.js";
 import { rowsOf } from "./fleet.js";
 import { openUpdate, pending as pendingUpdate } from "./update.js";
 import { tokens, alpha, TEXT, RADIUS, Icon, Kbd, Button, SectionHeader, StageHeading, HoverCard, Hover, Flashes, CornerCount, dur } from "./ui.js";
+import { DEFAULT_SPACES, spaceNames, customApps, pinnedApps } from "./apps.js";
 import { AgentsModel, QuestionCard, QuotaBars, StageMark, Chips, STAGES, stageColor, stageAge, hours } from "./agentsui.js";
 
-const APPS = {
-  inbox: { label: "Inbox", icon: "inbox", key: "⌘⌥1" },
-  runbook: { label: "Runbook", icon: "book", key: "⌘⌥2" },
-  "to-do": { child: "todo", label: "To-do", icon: "list-todo", key: "⌘⌥3" },
-  meetings: { label: "Meetings", icon: "calendar", key: "⌘⌥4" },
-  monitor: { label: "Monitor", icon: "activity", key: "⌘⌥5" },
-  routines: { label: "Routines", icon: "clock", key: "⌘⌥6" },
-  mail: { label: "Mail", icon: "mail", key: "⌘⌥7" },
-};
-const DEFAULT_SPACES = ["inbox", "terminal", "actions", "to-do", "runbook", "meetings"];
 
 /** An app's bubble from its view: what waits on you there, {count, tone} or null. */
 function appBadge(app, v) {
@@ -61,6 +52,7 @@ export function openPalette(cx) {
 export default class Sidebar {
   init(_props, cx) {
     this.spaces = DEFAULT_SPACES;
+    this.custom = {};
     this.counts = {};
     this.place = null;
     this.width = 268;
@@ -82,7 +74,10 @@ export default class Sidebar {
         const { cache, home } = this.install;
         const text = (await readTextFile(`${cache}/config.json`)) ?? (await readTextFile(`${home}/.config/cockpit/config.json`));
         const pinned = text ? JSON.parse(text).spaces : null;
-        if (Array.isArray(pinned)) this.spaces = pinned.map((s) => (typeof s === "string" ? s : s.name));
+        if (Array.isArray(pinned)) {
+          this.spaces = spaceNames(pinned);
+          this.custom = customApps(pinned);
+        }
       } catch {}
       cx.notify();
     });
@@ -224,7 +219,7 @@ export default class Sidebar {
         )
         .when(Boolean(count) && rail, (e) => e.child(div().absolute().top(4).right(6).size(7).rounded(4).bg(tone ?? k.ring)));
     };
-    const apps = this.spaces.filter((s) => APPS[s]).map((s) => ({ ...APPS[s], child: APPS[s].child ?? s }));
+    const apps = pinnedApps(this.spaces, this.custom);
     const badge = (child) => this.counts[child] ?? shared(`badge.${child}`) ?? null;
     const tone = (child) => { const t = badge(child)?.tone; return t ? k[t] ?? t : null; };
     const counts = model.value?.counts ?? {};
@@ -333,10 +328,10 @@ export default class Sidebar {
         items.map((a) => {
           const on = active === a.child;
           // Home stays first; the pinned apps move by drag and drop, the config's order following.
-          const movable = a.child !== "home";
+          const movable = Boolean(a.name);
           const d = this.appDrag;
-          const dragging = d && d.from === a.child && d.over !== a.child;
-          const over = d && d.over === a.child && d.from !== a.child;
+          const dragging = d && d.from === a.name && d.over !== a.name;
+          const over = d && d.over === a.name && d.from !== a.name;
           return h_flex()
             .id(`nav-${a.child}`)
             .flex_1()
@@ -350,24 +345,24 @@ export default class Sidebar {
             .when(on, (e) => e.bg(k.background).shadow_sm())
             .when(!on, (e) => e.hover((s) => s.bg(k.accent).text_color(k.foreground)))
             .when(Boolean(dragging), (e) => e.opacity(0.4))
-            .when(Boolean(over), (e) => e.child(div().absolute().top(4).bottom(4).w(2).rounded(1).bg(k.ring).when(this.appDropAfter(a.child), (l) => l.right(0)).when(!this.appDropAfter(a.child), (l) => l.left(0))))
+            .when(Boolean(over), (e) => e.child(div().absolute().top(4).bottom(4).w(2).rounded(1).bg(k.ring).when(this.appDropAfter(a.name), (l) => l.right(0)).when(!this.appDropAfter(a.name), (l) => l.left(0))))
             .when(movable, (e) =>
               e
                 .on_mouse_down("left", () => {
-                  this.appDrag = { from: a.child, over: a.child };
+                  this.appDrag = { from: a.name, over: a.name };
                 })
                 .on_mouse_move((_e, cx) => {
-                  if (this.appDrag && this.appDrag.over !== a.child) {
-                    this.appDrag.over = a.child;
+                  if (this.appDrag && this.appDrag.over !== a.name) {
+                    this.appDrag.over = a.name;
                     cx.notify();
                   }
                 })
                 .on_mouse_up("left", (_e, cx) => {
                   const drag = this.appDrag;
                   this.appDrag = null;
-                  if (drag && drag.from !== a.child) {
+                  if (drag && drag.from !== a.name) {
                     cx.stop_propagation();
-                    this.moveApp(drag.from, a.child);
+                    this.moveApp(drag.from, a.name);
                     cx.notify();
                   }
                 }),
@@ -383,10 +378,10 @@ export default class Sidebar {
       );
   }
 
-  /** Whether a drop on `child` lands after it: dragging rightwards. */
-  appDropAfter(child) {
+  /** Whether a drop on the space `name` lands after it: dragging rightwards. */
+  appDropAfter(name) {
     const d = this.appDrag;
-    return Boolean(d) && this.spaces.indexOf(d.from) < this.spaces.indexOf(child);
+    return Boolean(d) && this.spaces.indexOf(d.from) < this.spaces.indexOf(name);
   }
 
   /** Moves a pinned app to where another one is, then saves the order and re-pins herdr's spaces to match. */
