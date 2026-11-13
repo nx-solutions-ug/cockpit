@@ -271,7 +271,12 @@ percent, resetsAt}]}`), which the plugin writes from Claude's rate limits.
 Drawn by `sidebar.js` (Needs you band answered in place, agents by ticket / space / whose move, Herdr's spaces list,
 quota bars) and `recap.js` (the cmd-r dialog, its Time tab the week's ledger), from `agentsui.js`: `AgentsModel`
 (follows the view, runs its actions, menu commands `cockpit.agents|<what>|<terminal>|<arg>` run by the sidebar copy),
-`QuestionCard`, `Chips`, `QuotaBars`, `StageMark`. In a shell or herdr's popup: `cockpit agents [pick|answer|recap|
+`QuestionCard`, `Chips`, `QuotaBars`, `QuotaRow` (5h and 7d side by side, a window not reported as "not reported"),
+`QuotaRail`, `ContextMeter`, `StageMark`. Each agent row in the sidebar also carries the status line its agent reports
+to herdr-core (`terminals()`), and the context left (`100 − context`, amber under 25%, red under 10%). Its hover card
+and its chevron (or `cockpit.expand:<terminal>`) show model, cost, turn and last activity: `claude.js` reads the
+model from the tail of the session's transcript and the last activity from `agents.json`, once per turn, only while
+the row is hovered or open in the window in front. In a shell or herdr's popup: `cockpit agents [pick|answer|recap|
 snooze|seen|fork|week]`. `COCKPIT_AGENTS_DEMO=herdr/tui/agents/demo.json` (set before `sandbox.sh start`) replaces
 the terminals with the acme demo's made-up agents, answered in memory.
 

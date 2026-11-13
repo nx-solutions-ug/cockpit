@@ -14,7 +14,8 @@ import { rowsOf } from "./fleet.js";
 import { openUpdate, pending as pendingUpdate } from "./update.js";
 import { tokens, alpha, TEXT, RADIUS, Icon, Kbd, Button, SectionHeader, StageHeading, HoverCard, Hover, Flashes, CornerCount, dur } from "./ui.js";
 import { DEFAULT_SPACES, spaceNames, customApps, pinnedApps, withOwnBlocks, badgeDue, parseBadge } from "./apps.js";
-import { AgentsModel, QuestionCard, QuotaBars, StageMark, Chips, STAGES, stageColor, stageAge, hours } from "./agentsui.js";
+import { AgentsModel, QuestionCard, QuotaRow, QuotaRail, ContextMeter, StageMark, Chips, STAGES, stageColor, stageAge, hours } from "./agentsui.js";
+import { Details, TAIL_SCRIPT, contextLeft, statusLine, turnOf, modelName } from "./claude.js";
 
 
 /** An app's bubble from its view: what waits on you there, {count, tone} or null. */
@@ -73,6 +74,18 @@ export default class Sidebar {
     this.update = null;
     this.agents = new AgentsModel();
     this.agents.loadPins();
+    this.expanded = new Set();
+    this.details = new Details({
+      facts: async () => {
+        const { cache, machine } = await hub.install();
+        const text = await readTextFile(`${cache}/agents.json`, machine ? { on: machine } : undefined);
+        return text ? JSON.parse(text) : null;
+      },
+      tail: async (session) => {
+        const r = await exec("sh", ["-c", TAIL_SCRIPT, "sh", session], { timeout: 5000 });
+        return r.code === 0 ? r.stdout : null;
+      },
+    });
     this.agents.follow(cx, (value, before, cx) => this.agentsChanged(value, before, cx));
     cx.spawn(async (cx) => {
       try {
@@ -130,9 +143,16 @@ export default class Sidebar {
     else if (this.agents.command(c, cx)) return;
     else if (c === "kit" || c.startsWith("kit:")) openOverlay({ mod: "cockpit", props: { app: "kit", tab: c.split(":")[1] }, kind: "window", key: "cockpit-kit", width: 0.85, height: 0.9 });
     else if (c.startsWith("target:")) this.target(c.slice(7), cx);
+    else if (c.startsWith("expand:")) this.toggleExpanded(c.slice(7));
     else if (c === "update") openUpdate();
     else if (c.startsWith("code:open:")) openCode(c.slice(10));
     cx.notify();
+  }
+
+  /** Opens an agent row's details under it, or folds them back: `cockpit.expand:<terminal>` or its chevron. */
+  toggleExpanded(terminal) {
+    if (this.expanded.has(terminal)) this.expanded.delete(terminal);
+    else this.expanded.add(terminal);
   }
 
   /** The agents view arrived: rows whose stage moved flash in its color. */
@@ -178,6 +198,7 @@ export default class Sidebar {
     const rail = this.width < 160;
     const model = this.agents;
     const rows = model.rows;
+    this.terms = new Map((terminals() ?? []).map((t) => [t.address, t]));
     const waiting = rows.filter((r) => r.stage === "needs_you");
     const order = [...waiting, ...rows.filter((r) => r.stage !== "needs_you")];
     // Home answers them in its NEXT MOVE and cards: there the waiting agents stay in the list below. Without the hub
@@ -270,11 +291,12 @@ export default class Sidebar {
             .child(Kbd("⌘⇧P")),
         ),
       )
-      .when(!rail && Boolean(model.value?.quota?.length), (e) =>
-        e.child(div().id("quota-box").mb(8).px(4).cursor_pointer().on_click(() => this.openRecap("time")).child(QuotaBars(model.value.quota, { compact: true }))),
+      .when(!rail && Boolean(model.value), (e) =>
+        e.child(div().id("quota-box").mb(8).px(4).cursor_pointer().on_click(() => this.openRecap("time")).child(QuotaRow(model.value.quota))),
       )
       .when(rail, (e) =>
         e
+          .when(Boolean(model.value), (el) => el.child(div().id("quota-rail-box").mb(4).cursor_pointer().on_click(() => this.openRecap("time")).child(QuotaRail(model.value.quota))))
           .child(navItem("home", "Home", "layout-dashboard", counts.unread || null, "⌘⌥0", counts.needs_you ? k.blocked : null))
           .children(apps.map((a) => navItem(a.child, a.label, a.icon, badge(a.child)?.count || null, a.key, tone(a.child)))),
       )
@@ -489,12 +511,26 @@ export default class Sidebar {
     else if (r.ci?.state === "running") parts.push(div().text_color(k.working).child(r.ci.label));
     if (r.pr) parts.push(div().child(`#${r.pr.number}${r.pr.review === "APPROVED" ? " approved" : r.pr.review === "CHANGES_REQUESTED" ? " changes asked" : ""}`));
     if (r.changes?.files) parts.push(h_flex().gap(3).child(div().text_color(k.success).child(`+${r.changes.add}`)).child(div().text_color(k.destructive).child(`−${r.changes.del}`)));
-    if (!parts.length && r.said) parts.push(div().min_w(0).truncate().italic().child(r.said));
+    const term = r.remote ? null : this.terms?.get(r.address);
+    const msg = statusLine(term);
+    const turn = turnOf(term);
+    if (!parts.length && r.said && !msg) parts.push(div().min_w(0).truncate().italic().child(r.said));
+    const meter = ContextMeter(id, r.context);
+    const facts = parts.length > 0 || Boolean(meter);
+    const lines = 1 + (msg ? 1 : 0) + (facts ? 1 : 0);
+    const expanded = this.expanded.has(r.terminal);
+    // The hover card's model and last activity: read once per turn, only while the row is hovered or open in the window in front.
+    if ((hovered || expanded) && !r.remote && win().active && this.details.due(r, turn)) {
+      cx.spawn(async (cx) => {
+        await this.details.load(r, turn).catch(() => undefined);
+        cx.notify();
+      });
+    }
     const flash = this.flashes.of(r.terminal);
     const row = h_flex()
       .id(id)
       .relative()
-      .min_h(parts.length ? 42 : 30)
+      .min_h(lines === 1 ? 30 : lines === 2 ? 42 : 56)
       .py(4)
       .pl(8 + indent)
       .pr(8)
@@ -516,13 +552,26 @@ export default class Sidebar {
           .min_w(0)
           .gap(1)
           .child(div().truncate().text_size(TEXT.base).text_color(r.stage === "idle" || r.stage === "merged" ? k.mutedFg : k.foreground).child(r.title || r.tab?.name || r.address))
-          .when(parts.length > 0, (e) => e.child(h_flex().min_w(0).gap(6).text_size(TEXT.xs).text_color(k.mutedFg).children(parts))),
+          .when(Boolean(msg), (e) => e.child(div().min_w(0).truncate().text_size(TEXT.xs).text_color(k.mutedFg).child(msg)))
+          .when(facts, (e) =>
+            e.child(
+              h_flex()
+                .min_w(0)
+                .gap(6)
+                .items_center()
+                .text_size(TEXT.xs)
+                .text_color(k.mutedFg)
+                .child(h_flex().flex_1().min_w(0).gap(6).overflow_hidden().children(parts))
+                .when(Boolean(meter), (el) => el.child(meter)),
+            ),
+          ),
       )
       .when(hovered, (e) =>
         e.child(
           h_flex()
             .gap(2)
             .flex_none()
+            .when(!r.remote, (el) => el.child(Button(`${id}-open`, { icon: expanded ? "chevron-up" : "chevron-down", variant: "ghost", size: "icon-sm", tooltip: expanded ? "Hide the details" : "Model, cost, turn, last activity", onClick: (_e, cx) => (cx.stop_propagation(), this.toggleExpanded(r.terminal), cx.notify()) })))
             .child(Button(`${id}-pin`, { icon: pinned ? "pin-off" : "pin", variant: "ghost", size: "icon-sm", tooltip: pinned ? "Unpin" : "Pin to the top", onClick: (_e, cx) => (cx.stop_propagation(), this.agents.togglePin(r.terminal), cx.notify()) }))
             .child(Button(`${id}-more`, { icon: "more", variant: "ghost", size: "icon-sm", tooltip: "Snooze, recap, fork…", onClick: (_e, cx) => (cx.stop_propagation(), this.agents.menu(r)) })),
         ),
@@ -534,13 +583,45 @@ export default class Sidebar {
       );
     const tracked = this.hover.track(row, id);
     const recap = r.recap?.text;
+    const info = this.details.get(r);
+    const ctx = contextLeft(r.context);
+    const reading = !info && !r.remote;
+    const fact = (icon, label, value, color) =>
+      h_flex()
+        .min_w(0)
+        .gap(7)
+        .items_center()
+        .text_size(TEXT.xs)
+        .child(Icon(icon, { size: 12, color: k.dim }))
+        .child(div().w(72).flex_none().text_color(k.dim).child(label))
+        .child(div().flex_1().min_w(0).truncate().text_color(color ?? k.foreground).child(value));
+    const lastSeen = info?.last ? `${dur(now - info.last)} ago${info.lastText ? ` · ${info.lastText}` : ""}` : reading ? "…" : "—";
+    const claudeFacts = (key) =>
+      v_flex()
+        .id(`${id}-${key}`)
+        .min_w(0)
+        .gap(4)
+        .child(fact("bot", "Model", info?.model ? modelName(info.model) : reading ? "…" : "—"))
+        .child(fact("dollar", "Cost", typeof r.cost === "number" ? `$${r.cost.toFixed(2)}` : "—"))
+        .child(fact("rotate-ccw", "Turn", turn != null ? String(turn) : "—"))
+        .child(fact("gauge", "Context", ctx ? `${ctx.left}% left` : "—", ctx?.level === "critical" ? k.destructive : ctx?.level === "low" ? k.warning : undefined))
+        .child(fact("history", "Last activity", lastSeen))
+        .when(Boolean(msg), (e) => e.child(fact("message-square", "Status", msg, k.mutedFg)));
     const card = v_flex()
       .gap(8)
       .child(h_flex().gap(8).items_center().child(StageMark(`${id}-hc`, r.stage)).child(div().flex_1().font_semibold().child(r.title || r.address)).child(div().text_size(TEXT.xs).text_color(stageColor(r.stage)).child(stageAge(r, now))))
       .child(div().text_size(TEXT.sm).text_color(recap ? k.foreground : k.mutedFg).child(recap || (r.recap?.running ? "Recapping…" : r.said || "No recap yet: right-click › Recap.")))
       .child(h_flex().flex_wrap().gap(4).children(Chips(r, { id: `${id}-hc` })))
-      .child(div().text_size(TEXT.xs).text_color(k.dim).child(`${r.space?.name ?? ""} · ${r.tab?.name ?? ""}${r.cost ? ` · $${r.cost.toFixed(2)}` : ""}${r.context ? ` · context ${Math.round(r.context)}%` : ""}`));
-    return HoverCard(`${id}-hover`, tracked, card, { width: 340, openDelay: 650 });
+      .child(claudeFacts("hc-facts"))
+      .child(div().text_size(TEXT.xs).text_color(k.dim).child(`${r.space?.name ?? ""} · ${r.tab?.name ?? ""}`));
+    const hover = HoverCard(`${id}-hover`, tracked, card, { width: 340, openDelay: 650 });
+    if (!expanded) return hover;
+    return v_flex()
+      .id(`${id}-open`)
+      .w_full()
+      .min_w(0)
+      .child(hover)
+      .child(div().min_w(0).overflow_hidden().ml(30 + indent).mr(8).mb(4).px(8).py(6).rounded(RADIUS.md).bg(alpha(k.muted, 0.6)).child(claudeFacts("facts")));
   }
 
   /** Sub-agents an agent started (`hc run`), under it with tree lines; a click peeks. */
@@ -879,7 +960,7 @@ export default class Sidebar {
           .rounded(RADIUS.md)
           .cursor_pointer()
           .hover((s) => s.bg(k.accent))
-          .tooltip(`${r.title}: ${r.question?.text ?? "needs you"}`)
+          .tooltip(`${r.title}: ${r.question?.text ?? "needs you"}${contextLeft(r.context) ? ` · context ${contextLeft(r.context).left}% left` : ""}`)
           .on_click((_e, cx) => this.agents.go(cx, r))
           .child(StageMark(`rail-${r.terminal}`, "needs_you", { size: 9 })),
       ),

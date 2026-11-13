@@ -1,12 +1,13 @@
 // The agents, as the sidebar and the recap popup draw them: the hub's `agents` view (see docs/app.md) followed live,
 // its actions with their feedback, and the pieces both draw: stage marks, the question card answered in place, the
-// facts as chips, the quota bars with their pace tick, and the right-click menu of an agent.
+// facts as chips, the quota bars with their pace tick, the context left, and the right-click menu of an agent.
 
 import { div } from "gpui-kit";
 import { h_flex, v_flex, InputState } from "gpui-base";
 import { run, notify, openOverlay, agents } from "herdr";
 import * as hub from "./hub.js";
 import { rowsOf } from "./fleet.js";
+import { contextLeft, quotaSlots } from "./claude.js";
 import { tokens, alpha, TEXT, RADIUS, Icon, Spinner, Kbd, Button, Checkbox, Chip, Mono, TextField, dur, openMenu } from "./ui.js";
 
 /** Each stage: its label, color token and mark. Whose move it is, yours first. */
@@ -140,6 +141,94 @@ export function QuotaBars(quota, { id = "quota", compact = false } = {}) {
               .when(Boolean(q.ahead), (e) => e.child("▲"))
               .child(`${p}%`),
           );
+      }),
+    );
+}
+
+/** The context left as a short bar and its percentage: amber under 25%, red under 10%; null without a figure. */
+export function ContextMeter(id, used, { width = 28 } = {}) {
+  const c = contextLeft(used);
+  if (!c) return null;
+  const k = tokens();
+  const tone = c.level === "critical" ? k.destructive : c.level === "low" ? k.warning : k.mutedFg;
+  return h_flex()
+    .id(`${id}-ctx`)
+    .flex_none()
+    .gap(4)
+    .items_center()
+    .tooltip(`Context: ${c.left}% left (${100 - c.left}% used of the model's window)`)
+    .child(div().relative().w(width).h(4).rounded(2).bg(k.muted).child(div().absolute().left(0).top(0).h_full().rounded(2).bg(tone).w(`${c.left}%`)))
+    .child(div().text_size(TEXT.xs).font_family("JetBrains Mono").text_color(c.level === "ok" ? k.dim : tone).child(`${c.left}%`));
+}
+
+const quotaTone = (k, q, p) => (p >= 95 ? k.destructive : p >= 80 || q.ahead ? k.warning : k.success);
+
+/** Claude's 5h and 7d windows as two tiles side by side: the window, its use and reset, a slim bar with the pace tick;
+ *  a window not reported reads "not reported" over an empty bar. */
+export function QuotaRow(quota, { id = "quota" } = {}) {
+  const k = tokens();
+  const tile = (q) => {
+    const p = q.missing ? 0 : Math.max(0, Math.min(100, q.percent ?? 0));
+    const tone = quotaTone(k, q, p);
+    const left = !q.missing && q.resets_at ? dur(q.resets_at - Date.now()) : null;
+    const tip = q.missing
+      ? `${q.name}: Claude Code reports no ${q.name === "5h" ? "5-hour" : "7-day"} window right now`
+      : `${q.name}: ${p}% used${left ? `, resets in ${left}` : ""}${q.elapsed != null ? ` · ${Math.round(q.elapsed * 100)}% of the window gone${q.ahead ? ", ahead of pace" : ""}` : ""}`;
+    const head = h_flex()
+      .gap(5)
+      .items_baseline()
+      .child(div().flex_none().text_size(TEXT.xs).font_semibold().text_color(k.mutedFg).child(q.name))
+      .child(div().flex_1())
+      .when(q.missing, (e) => e.child(div().text_size(10.5).text_color(k.dim).child("not reported")))
+      .when(!q.missing && Boolean(left), (e) => e.child(div().text_size(10.5).text_color(k.dim).child(left)))
+      .when(!q.missing, (e) => e.child(div().flex_none().text_size(TEXT.xs).font_semibold().font_family("JetBrains Mono").text_color(q.ahead || p >= 80 ? tone : k.foreground).child(`${p}%`)));
+    const bar = div()
+      .relative()
+      .h(4)
+      .rounded(2)
+      .bg(k.muted)
+      .when(!q.missing, (e) =>
+        e
+          .child(div().absolute().left(0).top(0).h_full().rounded(2).bg(tone).w(`${Math.max(p, 2)}%`).transition("width", { duration: 400, easing: "ease-out" }))
+          .when(q.elapsed != null, (el) => el.child(div().absolute().top(-2).h(8).w(2).rounded(1).bg(k.foreground).opacity(0.55).left(`${Math.min(98, q.elapsed * 100)}%`))),
+      );
+    return v_flex()
+      .id(`${id}-${q.name}`)
+      .flex_1()
+      .min_w(0)
+      .gap(5)
+      .px(8)
+      .py(6)
+      .rounded(RADIUS.md)
+      .bg(alpha(k.muted, 0.5))
+      .tooltip(tip)
+      .child(head)
+      .child(bar);
+  };
+  return h_flex().id(id).gap(6).children(quotaSlots(quota).map(tile));
+}
+
+/** The 5h and 7d windows for the rail: two thin upright bars, the numbers in the tooltip. */
+export function QuotaRail(quota, { id = "quota-rail" } = {}) {
+  const k = tokens();
+  const slots = quotaSlots(quota);
+  const tip = slots.map((q) => (q.missing ? `${q.name} —` : `${q.name} ${Math.round(q.percent ?? 0)}%`)).join(" · ");
+  return h_flex()
+    .id(id)
+    .h(32)
+    .gap(5)
+    .justify_center()
+    .items_end()
+    .tooltip(`Claude limits used: ${tip}`)
+    .children(
+      slots.map((q) => {
+        const p = q.missing ? 0 : Math.max(0, Math.min(100, q.percent ?? 0));
+        return v_flex()
+          .id(`${id}-${q.name}`)
+          .items_center()
+          .gap(2)
+          .child(div().relative().w(5).h(18).rounded(2).bg(k.muted).child(div().absolute().left(0).bottom(0).w_full().rounded(2).bg(quotaTone(k, q, p)).h(`${p}%`)))
+          .child(div().text_size(8).text_color(k.dim).child(q.name));
       }),
     );
 }
