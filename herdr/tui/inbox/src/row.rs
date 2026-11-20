@@ -77,6 +77,8 @@ pub enum Kind {
     Brief,
     Muted,
     Worktree,
+    /// A row of the published Mailbox.
+    Mail,
 }
 
 impl Kind {
@@ -90,6 +92,7 @@ impl Kind {
             Kind::Brief => ("brief line", "brief lines"),
             Kind::Muted => ("muted repo", "muted repos"),
             Kind::Worktree => ("worktree", "worktrees"),
+            Kind::Mail => ("Mailbox item", "Mailbox items"),
             Kind::Plain => ("row", "rows"),
         };
         format!("{n} {}", if n == 1 { one } else { many })

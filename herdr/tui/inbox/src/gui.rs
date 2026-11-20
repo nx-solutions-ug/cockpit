@@ -33,7 +33,7 @@ pub fn view(args: &Value, doc: &dyn Fn(&str) -> Value) -> Value {
         let value = doc(name);
         if value.is_null() { files::load(&files::cache().join(format!("{name}.json"))) } else { Some(value) }
     };
-    let inputs = Inputs::of(pick("inbox"), pick("ci"), pick("brief"));
+    let inputs = Inputs { mailbox: pick("mailbox"), ..Inputs::of(pick("inbox"), pick("ci"), pick("brief")) };
     static LOCAL: Mutex<Option<Local>> = Mutex::new(None);
     let mut local = LOCAL.lock().unwrap_or_else(|e| e.into_inner());
     let local = local.get_or_insert_with(Local::default);
@@ -95,6 +95,7 @@ pub fn model_of(inputs: &Inputs, config: &Config, by_status: bool, local: &mut L
         "failing": prs.iter().filter(|p| p["ci"] == "FAILURE" || p["ci"] == "ERROR").count(),
         "alerts": alerts,
         "worktrees": worktrees.len(),
+        "mailbox": crate::mailbox::open_count(inputs.mailbox.as_ref()),
         "cleanup": worktrees.iter().filter(|w| w["merged"] == true && w["changes"] == 0).count(),
     });
     json!({
@@ -234,6 +235,7 @@ fn kind(kind: Kind) -> &'static str {
         Kind::Brief => "brief",
         Kind::Muted => "muted",
         Kind::Worktree => "worktree",
+        Kind::Mail => "mail",
     }
 }
 
@@ -329,6 +331,24 @@ mod tests {
         let empty = model_of(&Inputs::default(), &Config::from(json!({})), true, &mut local, json!({}));
         assert_eq!((empty["state"].as_str(), empty["group"].as_str()), (Some("empty"), Some("status")));
         assert!(empty["message"].as_str().unwrap().starts_with("No data yet"));
+    }
+
+    #[test]
+    fn the_published_mailbox_comes_first_with_its_count() {
+        facts::freeze("2026-10-28T10:00:00Z");
+        let mut local = Local::fixed(HashMap::new(), Vec::new());
+        let inputs = Inputs { data: Some(fixture("inbox.json")), mailbox: Some(fixture("mailbox.json")), ..Inputs::default() };
+        let view = model_of(&inputs, &Config::from(json!({})), false, &mut local, json!({}));
+        let first = &view["sections"][0];
+        assert_eq!((first["key"].as_str(), first["title"].as_str(), first["icon"].as_str()), (Some("mailbox"), Some("Needs you"), Some("inbox")));
+        assert_eq!(view["counts"]["mailbox"], 7);
+        let reply = first["children"].as_array().unwrap().iter().find(|g| g["key"] == "mailbox:reply").unwrap();
+        assert_eq!(reply["children"][0]["kind"], "mail");
+        assert_eq!(reply["children"][0]["primary"], json!({"fn": "mailbox_go", "args": [{"type": "url", "id": "https://acme.example/browse/ENG-412"}]}));
+        let without = model_of(&Inputs { mailbox: None, ..inputs.clone() }, &Config::from(json!({})), false, &mut local, json!({}));
+        assert_eq!((without["sections"][0]["key"].as_str(), &without["counts"]["mailbox"]), (Some("alerts"), &Value::Null));
+        let empty = model_of(&Inputs { mailbox: Some(fixture("mailbox.json")), ..Inputs::default() }, &Config::from(json!({})), false, &mut local, json!({}));
+        assert_eq!((empty["state"].as_str(), empty["sections"][0]["key"].as_str()), (Some("empty"), Some("mailbox")));
     }
 
     /// Every act label in the model, however deep its row.

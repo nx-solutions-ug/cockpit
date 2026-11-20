@@ -1,0 +1,139 @@
+{
+  "version": 1,
+  "by": "hyper-linux",
+  "open": 7,
+  "seen": 0,
+  "notes": [
+    "Jira (twg): reading comments — replies follow"
+  ],
+  "groups": [
+    {
+      "kind": "blocked",
+      "label": "Blocked workers",
+      "sub": "Waiting in the terminal",
+      "items": [
+        {
+          "title": "maya: ENG-412 asks which quota limit to keep",
+          "sub": null,
+          "at": null,
+          "key": null,
+          "target": {
+            "type": "terminal",
+            "id": "t3"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "release",
+      "label": "Bad releases",
+      "sub": "Bad release",
+      "items": [
+        {
+          "title": "web v2.14.0 — checkout errors up · 3 new errors",
+          "sub": null,
+          "at": 1793179980000,
+          "key": null,
+          "target": {
+            "type": "monitor",
+            "id": "web"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "routine",
+      "label": "Failed routines",
+      "sub": "Routine failed",
+      "items": [
+        {
+          "title": "Nightly digest — the agent stopped on a login prompt",
+          "sub": "Routine failed",
+          "at": 1793159880000,
+          "key": null,
+          "target": {
+            "type": "routine",
+            "id": "nightly-digest"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "reply",
+      "label": "Replies owed",
+      "sub": "Jira reply owed",
+      "items": [
+        {
+          "title": "ENG-412 Quota banner shows the wrong limit",
+          "sub": null,
+          "at": 1793179080000,
+          "key": "ENG-412",
+          "target": {
+            "type": "url",
+            "id": "https://acme.example/browse/ENG-412"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "draft",
+      "label": "Drafts waiting for a yes",
+      "sub": "Draft",
+      "items": [
+        {
+          "title": "api/eng-412-drafts.md",
+          "sub": null,
+          "at": 1793180580000,
+          "key": null,
+          "target": {
+            "type": "file",
+            "id": "/home/me/.cache/handoffs/api/eng-412-drafts.md"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "wait",
+      "label": "CI / review waits",
+      "sub": "CI / review",
+      "items": [
+        {
+          "title": "web#1866 QuotaBanner links to the help center",
+          "sub": null,
+          "at": null,
+          "key": null,
+          "target": {
+            "type": "url",
+            "id": "https://github.com/acme/web/pull/1866"
+          }
+        },
+        {
+          "title": "api#2219 Quota: read the plan's limit",
+          "sub": null,
+          "at": 1793180760000,
+          "key": null,
+          "target": {
+            "type": "url",
+            "id": "https://github.com/acme/api/pull/2219"
+          }
+        }
+      ]
+    }
+  ],
+  "done": {
+    "label": "Done",
+    "items": [
+      {
+        "title": "priya",
+        "sub": null,
+        "at": null,
+        "key": null,
+        "target": {
+          "type": "terminal",
+          "id": "t7"
+        }
+      }
+    ]
+  },
+  "at": 1793181480000
+}

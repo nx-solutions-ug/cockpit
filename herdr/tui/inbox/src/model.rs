@@ -1,4 +1,5 @@
-//! The inbox's caches as rows of a tree: the header and its error lines, then Today, Alerts, Review, Work and Other PRs.
+//! The inbox's caches as rows of a tree: the header and its error lines, then the published Mailbox, Today, Alerts,
+//! Review, Work and Other PRs.
 
 use std::collections::{HashMap, HashSet};
 
@@ -48,6 +49,7 @@ pub fn usable(inputs: &Inputs) -> Option<&Value> {
 
 /// The header with its error lines, and the tree's top rows.
 pub fn model(inputs: &Inputs, ctx: &Ctx, local: &mut Local) -> (Vec<Line<'static>>, Vec<Row>) {
+    let mut top: Vec<Row> = crate::mailbox::section(inputs.mailbox.as_ref()).into_iter().collect();
     let Some(data) = &inputs.data else {
         // Nothing wired waits for ever, which reads the same as waiting a minute unless the line says which.
         let waiting = sources::empty_line(
@@ -56,17 +58,16 @@ pub fn model(inputs: &Inputs, ctx: &Ctx, local: &mut Local) -> (Vec<Line<'static
             "the hub fills this within a minute.",
             "nothing is connected · cockpit setup wires your PRs, tickets and CI.",
         );
-        return (vec![Line::styled(waiting, dim())], Vec::new());
+        return (vec![Line::styled(waiting, dim())], top);
     };
     if usable(inputs).is_none() {
-        return (vec![Line::styled("Refreshing: this was last filled by another version of cockpit.", dim())], Vec::new());
+        return (vec![Line::styled("Refreshing: this was last filled by another version of cockpit.", dim())], top);
     }
     let ci = if inputs.ci.is_object() { inputs.ci.clone() } else { json!({"runs": []}) };
     let mut head = vec![heading("inbox", "Inbox", &format!("updated {}", facts::clock(&data["at"])))];
     let errors = list(data, "errors").iter().chain([&ci["error"]]).filter(|e| e.is_string());
     head.extend(errors.map(|e| Line::styled(e.as_str().unwrap_or_default().to_string(), fg(RED))));
 
-    let mut top = Vec::new();
     if let Some(today) = inputs.brief.as_ref().and_then(today) {
         top.push(today);
     }

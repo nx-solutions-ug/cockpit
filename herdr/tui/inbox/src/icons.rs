@@ -63,7 +63,7 @@ pub fn icon(name: &str) -> &'static str {
 
 /// A glyph's lucide icon name, for the Herdr app's rows: the glyphs the rows lead with, by what they mean.
 pub fn lucide(glyph: &str) -> &'static str {
-    const NAMES: [(&str, &str); 21] = [
+    const NAMES: [(&str, &str); 22] = [
         ("inbox", "inbox"),
         ("review", "eye"),
         ("work", "briefcase"),
@@ -85,6 +85,7 @@ pub fn lucide(glyph: &str) -> &'static str {
         ("rocket", "rocket"),
         ("worktree", "folder-git"),
         ("ci", "activity"),
+        ("plan", "file-text"),
     ];
     NAMES.iter().find(|(name, _)| icon(name) == glyph).map(|(_, lucide)| *lucide).unwrap_or("circle")
 }

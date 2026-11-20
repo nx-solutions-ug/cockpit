@@ -14,7 +14,8 @@ import {
   SegBar, Avatar, personColor, Separator, CountPill, Overline,
 } from "./ui.js";
 
-/** The inbox by kind of thing rather than the TUI's tree: alerts, reviews, your PRs, tickets, then what is left. */
+/** The inbox by kind of thing rather than the TUI's tree: the published Mailbox, alerts, reviews, your PRs, tickets, then
+ *  what is left. */
 function bySort(model) {
   if (!model?.sections) return model;
   const flat = [];
@@ -31,7 +32,7 @@ function bySort(model) {
   const tickets = flat.filter((r) => r.kind === "ticket").map((t) => ({ ...t, children: (t.children ?? []).filter((c) => c.kind !== "pr" && c.kind !== "ticket") }));
   const trees = flat.filter((r) => r.kind === "worktree");
   const review = keep("review");
-  const out = [keep("today"), keep("alerts")].filter(Boolean);
+  const out = [keep("mailbox"), keep("today"), keep("alerts")].filter(Boolean);
   if (review) out.push({ ...review, title: "Reviews", name: "Reviews" });
   if (prs.length) out.push(section("prs", "Your PRs", "git-pull-request", prs));
   if (tickets.length) out.push(section("tickets", "Tickets", "ticket", tickets));
@@ -39,8 +40,11 @@ function bySort(model) {
   return { ...model, sections: out };
 }
 
+/** The Mailbox section's open rows: its groups' items, without the folded Done group. */
+const mailboxOpen = (row) => (row.children ?? []).filter((g) => g.key !== "mailbox:done").reduce((n, g) => n + (g.children ?? []).filter((c) => c.kind === "mail").length, 0);
+
 const H = { heading: 52, pr: 34, ticket: 34, group: 30, line: 26, text: 32 };
-const KIND_NAME = { pr: ["PR", "PRs"], review: ["review request", "review requests"], ticket: ["ticket", "tickets"], alert: ["alert", "alerts"], brief: ["brief line", "brief lines"], muted: ["muted repo", "muted repos"], worktree: ["worktree", "worktrees"] };
+const KIND_NAME = { pr: ["PR", "PRs"], review: ["review request", "review requests"], ticket: ["ticket", "tickets"], alert: ["alert", "alerts"], brief: ["brief line", "brief lines"], muted: ["muted repo", "muted repos"], worktree: ["worktree", "worktrees"], mail: ["Mailbox item", "Mailbox items"] };
 const FRESH_MS = 120_000;
 
 const words = (q) => q.toLowerCase().split(/\s+/).filter(Boolean);
@@ -935,7 +939,7 @@ export default class Inbox {
   body(v, k, cx) {
     const { row, depth } = v;
     if (depth === 0) {
-      const count = row.children?.length ?? 0;
+      const count = row.key === "mailbox" ? mailboxOpen(row) : row.children?.length ?? 0;
       return h_flex()
         .flex_1()
         .min_w(0)

@@ -5,6 +5,7 @@ mod book;
 mod inbox;
 mod land;
 mod mail;
+mod mailbox;
 mod meetings;
 mod monitor;
 mod pins;
@@ -79,6 +80,7 @@ fn action(app: &str, name: &str) -> Option<Action> {
         ("inbox", "close_space") => inbox::close_space,
         ("inbox", "run") => inbox::run,
         ("inbox", "dismiss_brief") => inbox::dismiss_brief,
+        ("inbox", "mailbox_go") => mailbox::go,
         ("inbox", "request_refresh") => inbox::request_refresh,
         ("inbox", "merge") => land::merge,
         ("inbox", "automerge") => land::automerge,

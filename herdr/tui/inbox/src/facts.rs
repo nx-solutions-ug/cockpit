@@ -60,6 +60,16 @@ pub fn age_days(iso: &str) -> Option<f64> {
     Some((now() - at.with_timezone(&Utc)).num_milliseconds() as f64 / 86_400_000.0)
 }
 
+/// Milliseconds since a millisecond timestamp.
+pub fn age_ms(ms: i64) -> i64 {
+    now().timestamp_millis().saturating_sub(ms)
+}
+
+/// A millisecond timestamp as an ISO date, for `ago`.
+pub fn iso(ms: i64) -> String {
+    Utc.timestamp_millis_opt(ms).single().map(|t| t.to_rfc3339()).unwrap_or_default()
+}
+
 pub fn ago(iso: &str) -> String {
     match age_days(iso) {
         None => String::new(),

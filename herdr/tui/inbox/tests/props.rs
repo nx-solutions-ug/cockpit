@@ -80,8 +80,37 @@ fn field() -> impl Strategy<Value = String> {
         "tag",
         "dashboard",
         "workflow",
+        "kind",
+        "label",
+        "sub",
+        "items",
+        "target",
+        "type",
+        "at",
+        "key",
+        "open",
+        "seen",
+        "notes",
+        "by",
     ])
     .prop_map(str::to_string)
+}
+
+/// A Mailbox document of this version whose every field holds anything, groups of anything included.
+fn mailbox() -> impl Strategy<Value = Value> {
+    let keys = ["at", "open", "seen", "notes", "groups", "done", "by"];
+    let at = prop_oneof![any::<i64>().prop_map(Value::from), Just(json!(1793181480000_i64))];
+    (prop::collection::vec(any_json(), keys.len()), at, prop::collection::vec(any_json(), 0..4)).prop_map(move |(values, at, items)| {
+        let mut doc = json!({"version": 1});
+        for (key, value) in keys.iter().zip(values) {
+            doc[*key] = value;
+        }
+        if !doc["at"].is_i64() {
+            doc["at"] = at;
+        }
+        doc["groups"] = json!([{"kind": "wait", "label": "CI / review waits", "items": items}]);
+        doc
+    })
 }
 
 /// An inbox cache of this version whose every section holds anything.
@@ -100,8 +129,8 @@ proptest! {
     #![proptest_config(ProptestConfig::with_cases(400))]
 
     #[test]
-    fn the_model_never_panics(data in prop_oneof![inbox(), any_json()], ci in any_json(), brief in any_json(), compact in any::<bool>(), width in 8u16..140) {
-        let inputs = Inputs { data: Some(data), ci, brief: Some(brief), muted: vec!["api".into()], costs: HashMap::new(), ..Inputs::default() };
+    fn the_model_never_panics(data in prop_oneof![inbox(), any_json()], ci in any_json(), brief in any_json(), mailbox in prop_oneof![mailbox(), any_json()], compact in any::<bool>(), width in 8u16..140) {
+        let inputs = Inputs { data: Some(data), ci, brief: Some(brief), mailbox: Some(mailbox), muted: vec!["api".into()], costs: HashMap::new(), ..Inputs::default() };
         let mut app = App::fixture(inputs, json!({}), compact, Local::fixed(HashMap::new(), Vec::new()), HashMap::new());
         render(&mut app, width, 30);
     }

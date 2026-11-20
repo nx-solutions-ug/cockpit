@@ -15,6 +15,8 @@ pub struct Inputs {
     pub data: Option<Value>,
     pub ci: Value,
     pub brief: Option<Value>,
+    /// The Mailbox another frontend published (mailbox.rs); None while none did.
+    pub mailbox: Option<Value>,
     pub muted: Vec<String>,
     /// What each ticket cost, in US dollars, summed over the sessions that worked on it.
     pub costs: HashMap<String, f64>,
@@ -25,11 +27,11 @@ pub struct Inputs {
 }
 
 /// The documents the inbox follows through the hub.
-pub const DOCS: [&str; 3] = ["inbox", "ci", "brief"];
+pub const DOCS: [&str; 4] = ["inbox", "ci", "brief", "mailbox"];
 
 impl Inputs {
     pub fn read(docs: &Docs) -> Self {
-        Self::of(docs.get("inbox").cloned(), docs.get("ci").cloned(), docs.get("brief").cloned())
+        Self { mailbox: docs.get("mailbox").cloned(), ..Self::of(docs.get("inbox").cloned(), docs.get("ci").cloned(), docs.get("brief").cloned()) }
     }
 
     /// The documents given, with what the inbox reads on disk beside them.
@@ -38,6 +40,7 @@ impl Inputs {
             data,
             ci: ci.unwrap_or_else(|| json!({"runs": []})),
             brief,
+            mailbox: None,
             muted: muted(),
             costs: ticket_costs(),
             worktrees: crate::worktrees::scan(&files::config()),
