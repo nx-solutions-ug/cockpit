@@ -19,6 +19,15 @@ fn by_feature_at_three_widths() {
 }
 
 #[test]
+fn with_the_published_mailbox() {
+    let mut inputs = common::inputs();
+    inputs.mailbox = Some(common::fixture("mailbox.json"));
+    let mut app = app(false);
+    app.feed(inputs);
+    insta::assert_snapshot!(render(&mut app, 90, HEIGHT));
+}
+
+#[test]
 fn by_status() {
     let mut app = app(false);
     typed(&mut app, "w");

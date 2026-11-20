@@ -18,12 +18,13 @@ import { AgentsModel, QuestionCard, QuotaRow, QuotaRail, ContextMeter, StageMark
 import { Details, TAIL_SCRIPT, contextLeft, statusLine, turnOf, modelName } from "./claude.js";
 
 
-/** An app's bubble from its view: what waits on you there, {count, tone} or null. */
+/** An app's bubble from its view: what waits on you there, {count, tone} or null; the inbox counts the published
+ *  Mailbox's open rows while there is one, else the reviews asked of you. */
 function appBadge(app, v) {
   if (!v) return null;
   const of = (count, tone) => (count ? { count, tone } : null);
   if (app === "todo") return of(v.open, null);
-  if (app === "inbox") return of(v.counts?.direct, "warning");
+  if (app === "inbox") return of(v.counts?.mailbox ?? v.counts?.direct, "warning");
   if (app === "monitor") {
     const t = v.tiles ?? {};
     return of((t.alerts ?? 0) + (t.failed ?? 0), "destructive") ?? of(t.newErrors, "warning");

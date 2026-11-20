@@ -13,7 +13,7 @@ use redb::{Database, ReadableDatabase, TableDefinition};
 use serde_json::{Map, Value, json};
 
 /// The documents the store keeps; any other name is refused, so no request names a file of its own.
-pub const DOCS: [&str; 9] = ["inbox", "ci", "meetings", "brief", "monitor", "routines", "queue", "agents", "mail"];
+pub const DOCS: [&str; 10] = ["inbox", "ci", "meetings", "brief", "monitor", "routines", "queue", "agents", "mail", "mailbox"];
 
 const CURRENT: TableDefinition<&str, &[u8]> = TableDefinition::new("current");
 const PAST: TableDefinition<(&str, u64), &[u8]> = TableDefinition::new("past");

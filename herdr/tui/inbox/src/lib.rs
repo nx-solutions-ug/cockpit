@@ -11,6 +11,7 @@ mod history;
 mod icons;
 pub mod inputs;
 mod keys;
+pub mod mailbox;
 pub mod model;
 mod panel;
 mod requests;
